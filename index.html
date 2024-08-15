@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancer Statistics Map Application</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    #map {
+      min-height: 100vh;
+      height:100%;
+    }
+    #analytics {
+      padding: 20px;
+    }
+    .cancer-icon {
+      background-color: rgba(54, 194, 15, 0.7);
+      color: white;
+      font-size: 14px;
+      text-align: center;
+      border-radius: 50%;
+      padding: 5px;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Bootstrap Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark mb-2 bg-success">
+    <a class="navbar-brand" href="#">Bladder cancer deaths</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+  </nav>
+
+  <!-- Map Container -->
+  <div class="container-fluid">
+    <div class="row">
+      
+      <div class="col-lg-5">
+        <div id="analytics" class="text-center">
+          <p id="totalCases">Total Bladder Cancer Deaths: </p>
+          <p id="highestCases" class="d-none">Nation with Highest No of Cases: </p>
+          <p id="lowestCases" class="d-none">Nation with Least No of Cases: </p>
+          <canvas id="cancerChart" width="350" height="350"></canvas> <!-- Polar Area Chart Canvas -->
+        </div>
+      </div>
+      <div class="col-lg-7">
+        <div id="map"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet.js, Chart.js, and Bootstrap Scripts -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    // Initialize the map centered on a global view
+    var map = L.map('map').setView([48.8575, 2.5], 4);
+
+    // Add tile layer (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Example cancer data for top 20 countries (placeholders with male and female cases)
+    var cancerData = [
+        { "lat": 35.8617, "lng": 104.1954, "country": "China", "maleCases": 73218, "femaleCases": 19665 },
+        { "lat": 37.0902, "lng": -95.7129, "country": "United States of America", "maleCases": 61657, "femaleCases": 18747 },
+        { "lat": 41.8719, "lng": 12.5674, "country": "Italy", "maleCases": 27211, "femaleCases": 7369 },
+        { "lat": 36.2048, "lng": 138.2529, "country": "Japan", "maleCases": 25132, "femaleCases": 9436 },
+        { "lat": 51.1657, "lng": 10.4515, "country": "Germany", "maleCases": 21387, "femaleCases": 7648 },
+        { "lat": 55.3781, "lng": -3.4360, "country": "United Kingdom", "maleCases": 17555, "femaleCases": 6088 },
+        { "lat": 40.4637, "lng": -3.7492, "country": "Spain", "maleCases": 17011, "femaleCases": 4407 },
+        { "lat": 46.6034, "lng": 1.8883, "country": "France (metropolitan)", "maleCases": 16042, "femaleCases": 0 },
+        { "lat": 61.5240, "lng": 105.3188, "country": "Russian Federation", "maleCases": 14667, "femaleCases": 4685 },
+        { "lat": 20.5937, "lng": 78.9629, "country": "India", "maleCases": 17668, "femaleCases": 4880 },
+        { "lat": -14.2350, "lng": -51.9253, "country": "Brazil", "maleCases": 0, "femaleCases": 4938 }
+    ];
+
+    // Function to calculate and display analytics
+    function calculateAnalytics(data) {
+      var totalMaleCases = 0;
+      var totalFemaleCases = 0;
+      var highestCases = data[0];
+      var lowestCases = data[0];
+
+      data.forEach(function(item) {
+        totalMaleCases += item.maleCases;
+        totalFemaleCases += item.femaleCases;
+        if (item.maleCases + item.femaleCases > highestCases.maleCases + highestCases.femaleCases) highestCases = item;
+        if (item.maleCases + item.femaleCases < lowestCases.maleCases + lowestCases.femaleCases) lowestCases = item;
+      });
+
+      // Update analytics section
+      document.getElementById('totalCases').innerText = `Total Bladder cancer deaths: ${totalMaleCases + totalFemaleCases}`;
+      document.getElementById('highestCases').innerText = `Nation with Highest No of Cases: ${highestCases.country}`;
+      document.getElementById('lowestCases').innerText = `Nation with Least No of Cases: ${lowestCases.country}`;
+
+      // Prepare data for polar area chart
+      var polarLabels = data.map(item => item.country);
+      var polarData = data.map(item => item.maleCases + item.femaleCases);
+
+      // Create polar area chart
+      var ctx = document.getElementById('cancerChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'polarArea',
+        data: {
+          labels: polarLabels,
+          datasets: [{
+            label: 'Cancer Cases',
+            data: polarData,
+            backgroundColor: [
+              '#FF6384', '#36A2EB', '#FFCE56', '#E57373', '#F06292', 
+              '#64B5F6', '#4DB6AC', '#81C784', '#FFB74D', '#FFD54F', 
+              '#B39DDB', '#F48FB1', '#4FC3F7', '#4DD0E1', '#81C784', 
+              '#64B5F6', '#FFB74D', '#A5D6A7', '#64B5F6', '#90CAF9', 
+              '#F06292', '#CE93D8', '#FF8A65'
+            ],
+            borderColor: '#000',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            tooltip: {
+              callbacks: {
+                label: function(tooltipItem) {
+                  var label = tooltipItem.label || '';
+                  if (label) {
+                    label += ': ' + tooltipItem.raw;
+                  }
+                  return label;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Function to generate the donut chart HTML
+    function generateDonutChartHtml(maleCases, femaleCases) {
+      return '<canvas width="200" height="200"></canvas>';
+    }
+
+    // Loop through the cancer data and add markers with popups to the map
+    cancerData.forEach(function(data) {
+      // Create custom icon with total cases numbers
+      var iconHtml = '<div class="cancer-icon">' + (data.maleCases + data.femaleCases).toLocaleString() + '</div>';
+      var customIcon = L.divIcon({
+        html: iconHtml,
+        className: 'custom-div-icon',
+        iconSize: [50, 50],
+        popupAnchor: [0, -15]
+      });
+
+      var popupContent = "<b>Country:</b> " + data.country + "<br/><b>Male Cases:</b> " + data.maleCases.toLocaleString() + "<br/><b>Female Cases:</b> " + data.femaleCases.toLocaleString() + "<br/>" + generateDonutChartHtml(data.maleCases, data.femaleCases);
+      var marker = L.marker([data.lat, data.lng], { icon: customIcon }).bindPopup(popupContent).addTo(map);
+
+      marker.on('popupopen', function() {
+        var popup = marker.getPopup();
+        var canvas = popup.getElement().querySelector('canvas');
+        if (canvas) {
+          var ctx = canvas.getContext('2d');
+          new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: ['Male Cases', 'Female Cases'],
+              datasets: [{
+                data: [data.maleCases, data.femaleCases],
+                backgroundColor: ['green', 'orange']
+              }]
+            },
+            options: {
+              responsive: false,
+              maintainAspectRatio: false
+            }
+          });
+        }
+      });
+    });
+
+    // Calculate and display analytics
+    calculateAnalytics(cancerData);
+  </script>
+</body>
+</html>
